@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>دریافت فایل انتخاب رشته</title>
+  <style>
+    body { font-family: Tahoma, sans-serif; background: #f2f4f8; display: flex;
+           justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .box { background: #fff; padding: 32px; border-radius: 12px; width: 320px;
+           box-shadow: 0 2px 12px rgba(0,0,0,.1); text-align: center; }
+    input { width: 100%; padding: 10px; font-size: 18px; text-align: center;
+            box-sizing: border-box; direction: ltr; margin: 12px 0; }
+    button { width: 100%; padding: 10px; font-size: 16px; background: #2563eb;
+             color: #fff; border: 0; border-radius: 8px; cursor: pointer; }
+    #msg { color: #c00; margin-top: 12px; min-height: 20px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>دریافت فایل شما</h2>
+    <p>کد خود را وارد کنید:</p>
+    <input id="code" type="text" autocomplete="off">
+    <button onclick="getFile()">دریافت فایل</button>
+    <div id="msg"></div>
+  </div>
+
+  <script>
+    async function getFile() {
+      const code = document.getElementById("code").value.trim();
+      const msg = document.getElementById("msg");
+      if (!/^[A-Za-z0-9]{6,20}$/.test(code)) {
+        msg.textContent = "کد معتبر نیست.";
+        return;
+      }
+      const url = "files/" + code + ".pdf";
+      try {
+        const res = await fetch(url, { method: "HEAD" });
+        if (res.ok) {
+          window.location.href = url;
+        } else {
+          msg.textContent = "کد اشتباه است.";
+        }
+      } catch (e) {
+        msg.textContent = "خطا در اتصال. دوباره تلاش کن.";
+      }
+    }
+  </script>
+</body>
+</html>

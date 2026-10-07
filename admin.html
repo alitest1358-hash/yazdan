@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>پنل آپلود</title>
+  <style>
+    body { font-family: Tahoma, sans-serif; background: #f2f4f8; margin: 0; padding: 24px; }
+    .box { background: #fff; max-width: 480px; margin: 0 auto 16px; padding: 24px;
+           border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.1); }
+    input, button { width: 100%; padding: 10px; font-size: 16px; box-sizing: border-box; margin-top: 10px; }
+    button { background: #2563eb; color: #fff; border: 0; border-radius: 8px; cursor: pointer; }
+    #result { font-size: 26px; direction: ltr; text-align: center; margin-top: 14px; font-weight: bold; }
+    #msg { margin-top: 10px; min-height: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    td { padding: 6px; border-bottom: 1px solid #eee; }
+    td.c { direction: ltr; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>تنظیم توکن (فقط یک بار)</h2>
+    <input id="token" type="password" placeholder="github_pat_...">
+    <button onclick="saveToken()">ذخیره توکن</button>
+  </div>
+
+  <div class="box">
+    <h2>آپلود PDF جدید</h2>
+    <input id="name" type="text" placeholder="اسم بچه (فقط برای یادداشت خودت)">
+    <input id="file" type="file" accept="application/pdf">
+    <button onclick="upload()">آپلود و ساخت کد</button>
+    <div id="msg"></div>
+    <div id="result"></div>
+  </div>
+
+  <div class="box">
+    <h2>لیست کدها (روی همین مرورگر)</h2>
+    <table id="list"></table>
+  </div>
+
+  <script>
+    const OWNER = "alitest1358-hash";
+    const REPO = "yazdan";
+    const ALPHABET = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 56 کاراکتر
+
+    function saveToken() {
+      localStorage.setItem("gh_token", document.getElementById("token").value.trim());
+      document.getElementById("token").value = "";
+      setMsg("توکن ذخیره شد.", "green");
+    }
+
+    function setMsg(t, color) {
+      const m = document.getElementById("msg");
+      m.textContent = t;
+      m.style.color = color || "#333";
+    }
+
+    function makeCode() {
+      let out = "";
+      while (out.length < 10) {
+        const bytes = crypto.getRandomValues(new Uint8Array(20));
+        for (const b of bytes) {
+          if (b < 224 && out.length < 10) out += ALPHABET[b % 56];
+        }
+      }
+      return out;
+    }
+
+    function toBase64(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result.split(",")[1]);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+    }
+
+    async function upload() {
+      const token = localStorage.getItem("gh_token");
+      const file = document.getElementById("file").files[0];
+      const name = document.getElementById("name").value.trim();
+      if (!token) return setMsg("اول توکن رو ذخیره کن.", "red");
+      if (!file) return setMsg("یک PDF انتخاب کن.", "red");
+
+      setMsg("در حال آپلود...");
+      document.getElementById("result").textContent = "";
+      const code = makeCode();
+      try {
+        const content = await toBase64(file);
+        const res = await fetch(
+          `https://api.github.com/repos/${OWNER}/${REPO}/contents/files/${code}.pdf`,
+          {
+            method: "PUT",
+            headers: {
+              "Authorization": "Bearer " + token,
+              "Accept": "application/vnd.github+json"
+            },
+            body: JSON.stringify({ message: "add file", content: content })
+          }
+        );
+        if (!res.ok) throw new Error("خطا " + res.status);
+        document.getElementById("result").textContent = code;
+        setMsg("آپلود شد. حدود ۱ تا ۲ دقیقه بعد کد فعال می‌شه.", "green");
+        const list = JSON.parse(localStorage.getItem("codes") || "[]");
+        list.push({ name: name || "(بدون اسم)", code: code });
+        localStorage.setItem("codes", JSON.stringify(list));
+        renderList();
+      } catch (e) {
+        setMsg("مشکل پیش اومد: " + e.message, "red");
+      }
+    }
+
+    function renderList() {
+      const list = JSON.parse(localStorage.getItem("codes") || "[]");
+      const t = document.getElementById("list");
+      t.innerHTML = "";
+      for (const item of list) {
+        const tr = document.createElement("tr");
+        const a = document.createElement("td");
+        a.textContent = item.name;
+        const b = document.createElement("td");
+        b.className = "c";
+        b.textContent = item.code;
+        tr.append(a, b);
+        t.appendChild(tr);
+      }
+    }
+    renderList();
+  </script>
+</body>
+</html>

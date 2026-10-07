@@ -28,8 +28,9 @@
   <div class="box">
     <h2>آپلود PDF جدید</h2>
     <input id="name" type="text" placeholder="اسم بچه (فقط برای یادداشت خودت)">
+    <input id="code" type="text" dir="ltr" autocapitalize="none" placeholder="کد دلخواه (۶ تا ۲۰ حرف و عدد انگلیسی)">
     <input id="file" type="file" accept="application/pdf">
-    <button onclick="upload()">آپلود و ساخت کد</button>
+    <button onclick="upload()">آپلود</button>
     <div id="msg"></div>
     <div id="result"></div>
   </div>
@@ -42,7 +43,6 @@
   <script>
     const OWNER = "alitest1358-hash";
     const REPO = "yazdan";
-    const ALPHABET = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 56 کاراکتر
 
     function saveToken() {
       localStorage.setItem("gh_token", document.getElementById("token").value.trim());
@@ -56,15 +56,10 @@
       m.style.color = color || "#333";
     }
 
-    function makeCode() {
-      let out = "";
-      while (out.length < 10) {
-        const bytes = crypto.getRandomValues(new Uint8Array(20));
-        for (const b of bytes) {
-          if (b < 224 && out.length < 10) out += ALPHABET[b % 56];
-        }
-      }
-      return out;
+    function normalize(s) {
+      return s.trim().toLowerCase()
+        .replace(/[\u06F0-\u06F9]/g, d => d.charCodeAt(0) - 0x06F0)
+        .replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x0660);
     }
 
     function toBase64(file) {
@@ -80,12 +75,14 @@
       const token = localStorage.getItem("gh_token");
       const file = document.getElementById("file").files[0];
       const name = document.getElementById("name").value.trim();
+      const code = normalize(document.getElementById("code").value);
       if (!token) return setMsg("اول توکن رو ذخیره کن.", "red");
       if (!file) return setMsg("یک PDF انتخاب کن.", "red");
+      if (!/^[a-z0-9]{6,20}$/.test(code))
+        return setMsg("کد باید ۶ تا ۲۰ حرف انگلیسی یا عدد باشه.", "red");
 
       setMsg("در حال آپلود...");
       document.getElementById("result").textContent = "";
-      const code = makeCode();
       try {
         const content = await toBase64(file);
         const res = await fetch(
@@ -99,12 +96,15 @@
             body: JSON.stringify({ message: "add file", content: content })
           }
         );
+        if (res.status === 422) throw new Error("این کد قبلاً برای یک فایل دیگه استفاده شده");
         if (!res.ok) throw new Error("خطا " + res.status);
         document.getElementById("result").textContent = code;
         setMsg("آپلود شد. حدود ۱ تا ۲ دقیقه بعد کد فعال می‌شه.", "green");
         const list = JSON.parse(localStorage.getItem("codes") || "[]");
         list.push({ name: name || "(بدون اسم)", code: code });
         localStorage.setItem("codes", JSON.stringify(list));
+        document.getElementById("code").value = "";
+        document.getElementById("name").value = "";
         renderList();
       } catch (e) {
         setMsg("مشکل پیش اومد: " + e.message, "red");

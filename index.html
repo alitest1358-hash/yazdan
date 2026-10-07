@@ -13,36 +13,55 @@
             box-sizing: border-box; direction: ltr; margin: 12px 0; }
     button { width: 100%; padding: 10px; font-size: 16px; background: #2563eb;
              color: #fff; border: 0; border-radius: 8px; cursor: pointer; }
-    #msg { color: #c00; margin-top: 12px; min-height: 20px; }
+    #msg { margin-top: 12px; min-height: 20px; }
   </style>
 </head>
 <body>
   <div class="box">
     <h2>دریافت فایل شما</h2>
     <p>کد خود را وارد کنید:</p>
-    <input id="code" type="text" autocomplete="off">
+    <input id="code" type="text" autocomplete="off" autocapitalize="none" autocorrect="off">
     <button onclick="getFile()">دریافت فایل</button>
     <div id="msg"></div>
   </div>
 
   <script>
+    function normalize(s) {
+      return s.trim().toLowerCase()
+        .replace(/[\u06F0-\u06F9]/g, d => d.charCodeAt(0) - 0x06F0)
+        .replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x0660);
+    }
+
+    function show(text, color) {
+      const m = document.getElementById("msg");
+      m.textContent = text;
+      m.style.color = color;
+    }
+
     async function getFile() {
-      const code = document.getElementById("code").value.trim();
-      const msg = document.getElementById("msg");
-      if (!/^[A-Za-z0-9]{6,20}$/.test(code)) {
-        msg.textContent = "کد معتبر نیست.";
+      const code = normalize(document.getElementById("code").value);
+      if (!/^[a-z0-9]{6,20}$/.test(code)) {
+        show("کد معتبر نیست.", "#c00");
         return;
       }
-      const url = "files/" + code + ".pdf";
+      show("در حال دریافت...", "#333");
       try {
-        const res = await fetch(url, { method: "HEAD" });
-        if (res.ok) {
-          window.location.href = url;
-        } else {
-          msg.textContent = "کد اشتباه است.";
+        const res = await fetch("files/" + code + ".pdf");
+        if (!res.ok) {
+          show("کد اشتباه است.", "#c00");
+          return;
         }
+        const blob = await res.blob();
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "entekhab-reshte.pdf";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+        show("دانلود شروع شد.", "green");
       } catch (e) {
-        msg.textContent = "خطا در اتصال. دوباره تلاش کن.";
+        show("خطا در اتصال. دوباره تلاش کن.", "#c00");
       }
     }
   </script>

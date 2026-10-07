@@ -3,54 +3,107 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
   <title>دریافت فایل انتخاب رشته</title>
   <style>
-    body { font-family: Tahoma, sans-serif; background: #f2f4f8; display: flex;
-           justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-    .box { background: #fff; padding: 32px; border-radius: 12px; width: 320px;
-           box-shadow: 0 2px 12px rgba(0,0,0,.1); text-align: center; }
-    input { width: 100%; padding: 10px; font-size: 18px; text-align: center;
-            box-sizing: border-box; direction: ltr; margin: 12px 0; }
-    button { width: 100%; padding: 10px; font-size: 16px; background: #2563eb;
-             color: #fff; border: 0; border-radius: 8px; cursor: pointer; }
-    #msg { margin-top: 12px; min-height: 20px; }
+    :root {
+      --bg1: #4f46e5; --bg2: #7c3aed;
+      --card: #ffffff; --text: #1f2937; --muted: #6b7280;
+      --accent: #4f46e5; --accent-dark: #4338ca;
+      --border: #e5e7eb; --ok: #059669; --err: #dc2626;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --card: #1f2937; --text: #f3f4f6; --muted: #9ca3af; --border: #374151; }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center;
+      padding: 20px; font-family: Tahoma, "Segoe UI", system-ui, sans-serif;
+      background: linear-gradient(135deg, var(--bg1), var(--bg2)); color: var(--text);
+    }
+    .card {
+      width: 100%; max-width: 380px; background: var(--card); border-radius: 20px;
+      padding: 36px 28px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,.25);
+    }
+    .icon {
+      width: 72px; height: 72px; margin: 0 auto 16px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--bg1), var(--bg2));
+      display: flex; align-items: center; justify-content: center;
+    }
+    .icon svg { width: 36px; height: 36px; stroke: #fff; fill: none; stroke-width: 2;
+                stroke-linecap: round; stroke-linejoin: round; }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    .sub { margin: 0 0 24px; color: var(--muted); font-size: 14px; line-height: 1.8; }
+    input {
+      width: 100%; padding: 14px; font-size: 20px; text-align: center; letter-spacing: 2px;
+      direction: ltr; border: 2px solid var(--border); border-radius: 12px;
+      background: transparent; color: var(--text); outline: none; transition: border-color .2s;
+    }
+    input:focus { border-color: var(--accent); }
+    input::placeholder { letter-spacing: 0; color: var(--muted); font-size: 15px; }
+    button {
+      width: 100%; margin-top: 14px; padding: 14px; font-size: 17px; font-family: inherit;
+      color: #fff; background: var(--accent); border: 0; border-radius: 12px;
+      cursor: pointer; transition: background .2s, transform .1s;
+    }
+    button:hover { background: var(--accent-dark); }
+    button:active { transform: scale(.98); }
+    button:disabled { opacity: .6; cursor: wait; }
+    #msg { margin-top: 18px; min-height: 24px; font-size: 15px; }
+    .ok { color: var(--ok); } .err { color: var(--err); } .info { color: var(--muted); }
+    .shake { animation: shake .4s; }
+    @keyframes shake {
+      20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); }
+    }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h2>دریافت فایل شما</h2>
-    <p>کد خود را وارد کنید:</p>
-    <input id="code" type="text" autocomplete="off" autocapitalize="none" autocorrect="off">
-    <button onclick="getFile()">دریافت فایل</button>
+  <div class="card" id="card">
+    <div class="icon">
+      <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14"/></svg>
+    </div>
+    <h1>دریافت فایل انتخاب رشته</h1>
+    <p class="sub">کدی که به شما داده شده را وارد کنید<br>تا فایل مخصوص خودتان دانلود شود.</p>
+    <input id="code" type="text" placeholder="کد شما" autocomplete="off"
+           autocapitalize="none" autocorrect="off" spellcheck="false">
+    <button id="btn" onclick="getFile()">دریافت فایل</button>
     <div id="msg"></div>
   </div>
 
   <script>
+    const codeInput = document.getElementById("code");
+    const btn = document.getElementById("btn");
+    const card = document.getElementById("card");
+
+    codeInput.addEventListener("keydown", e => { if (e.key === "Enter") getFile(); });
+
     function normalize(s) {
       return s.trim().toLowerCase()
         .replace(/[\u06F0-\u06F9]/g, d => d.charCodeAt(0) - 0x06F0)
         .replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x0660);
     }
 
-    function show(text, color) {
+    function show(text, cls) {
       const m = document.getElementById("msg");
       m.textContent = text;
-      m.style.color = color;
+      m.className = cls;
+    }
+
+    function fail(text) {
+      show(text, "err");
+      card.classList.remove("shake");
+      void card.offsetWidth;
+      card.classList.add("shake");
     }
 
     async function getFile() {
-      const code = normalize(document.getElementById("code").value);
-      if (!/^[a-z0-9]{6,20}$/.test(code)) {
-        show("کد معتبر نیست.", "#c00");
-        return;
-      }
-      show("در حال دریافت...", "#333");
+      const code = normalize(codeInput.value);
+      if (!/^[a-z0-9]{6,20}$/.test(code)) return fail("کد معتبر نیست.");
+      btn.disabled = true;
+      show("در حال دریافت...", "info");
       try {
         const res = await fetch("files/" + code + ".pdf");
-        if (!res.ok) {
-          show("کد اشتباه است.", "#c00");
-          return;
-        }
+        if (!res.ok) { btn.disabled = false; return fail("کد اشتباه است."); }
         const blob = await res.blob();
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
@@ -59,10 +112,11 @@
         link.click();
         link.remove();
         setTimeout(() => URL.revokeObjectURL(link.href), 10000);
-        show("دانلود شروع شد.", "green");
+        show("✓ دانلود شروع شد", "ok");
       } catch (e) {
-        show("خطا در اتصال. دوباره تلاش کن.", "#c00");
+        fail("خطا در اتصال. دوباره تلاش کن.");
       }
+      btn.disabled = false;
     }
   </script>
 </body>
